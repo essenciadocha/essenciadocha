@@ -4,20 +4,18 @@ import { Recipe, UserProgress, CategoryType, Language, ColorMode } from './types
 import { RECIPES, getIcon, NUTRI_TIPS, INGREDIENTS_POOL } from './constants';
 import { motion as motionBase, AnimatePresence } from 'framer-motion';
 import { initializeApp } from 'firebase/app';
-import * as firebaseAuth from 'firebase/auth';
+import { 
+  getAuth, 
+  signInWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged, 
+  setPersistence, 
+  browserLocalPersistence, 
+  browserSessionPersistence, 
+  sendPasswordResetEmail 
+} from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-const {
-  getAuth,
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-  setPersistence,
-  browserLocalPersistence,
-  browserSessionPersistence,
-  sendPasswordResetEmail
-} = firebaseAuth as any;
+import { GoogleGenAI } from "@google/genai";
 
 const motion = motionBase as any;
 
@@ -487,12 +485,17 @@ const App: React.FC = () => {
     setIsAiLoading(true);
     try {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      const ai = new GoogleGenAI({ apiKey: apiKey });
+      const ai = new GoogleGenAI({ apiKey });
+
+      const prompt = `Você é um sommelier de chás especialista. O usuário está sentindo ou buscando por: "${searchQuery}". Analise nossa lista de ervas: ${INGREDIENTS_POOL.slice(0, 50).join(', ')}. Identifique o ingrediente mais adequado para essa necessidade. Responda APENAS o nome do ingrediente (exatamente como na lista) para filtrar a busca, sem textos adicionais.`;
+
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `Você é um sommelier de chás especialista. O usuário está sentindo ou buscando por: "${searchQuery}". Analise nossa lista de ervas: ${INGREDIENTS_POOL.slice(0, 50).join(', ')}. Identifique o ingrediente mais adequado para essa necessidade. Responda APENAS o nome do ingrediente (exatamente como na lista) para filtrar a busca, sem textos adicionais.`,
+        contents: prompt
       });
+      
       const text = response.text;
+      
       if (text) {
         setSearchQuery(text.trim());
       }
@@ -654,7 +657,7 @@ const App: React.FC = () => {
         <div className="w-full flex flex-col items-center gap-6 mt-8 pb-4">
           <button 
             onClick={handleInstallApp}
-            className="w-full bg-white text-[#064E3B] py-4 rounded-2xl font-black uppercase tracking-widest text-xs active:scale-95 hover:brightness-110 transition-all flex items-center justify-center gap-3 shadow-[0px_0px_16px_rgba(6,78,59,0.5)]"
+            className="w-full max-w-md mx-auto bg-white text-[#064E3B] py-4 rounded-2xl font-black uppercase tracking-widest text-xs active:scale-95 hover:brightness-110 transition-all flex items-center justify-center gap-3 shadow-[0px_0px_16px_rgba(6,78,59,0.5)]"
           >
             <Smartphone size={18} />
             INSTALAR APP NO CELULAR
