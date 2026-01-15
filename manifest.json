@@ -1,18 +1,11 @@
 {
-  "name": "Essência do Chá",
   "short_name": "Essência",
-  "start_url": "/"
+  "name": "Essência do Chá",
+  "start_url": "/",
   "display": "standalone",
-  "background_color": "#064E3B",
-  "theme_color": "#064E3B",
-  "orientation": "portrait",
+  "theme_color": "#4a7c59",
+  "background_color": "#F1F3F5",
   "icons": [
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
