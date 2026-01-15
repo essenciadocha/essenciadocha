@@ -15,7 +15,7 @@ import {
   sendPasswordResetEmail 
 } from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
-import { GoogleGenerativeAI } from "@google/generative-ai
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const motion = motionBase as any;
 
