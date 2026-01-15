@@ -4,8 +4,13 @@ import { Recipe, UserProgress, CategoryType, Language, ColorMode } from './types
 import { RECIPES, getIcon, NUTRI_TIPS, INGREDIENTS_POOL } from './constants';
 import { motion as motionBase, AnimatePresence } from 'framer-motion';
 import { initializeApp } from 'firebase/app';
-// @ts-ignore
-import { 
+import * as FirebaseAuth from 'firebase/auth';
+import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { GoogleGenAI } from "@google/genai";
+
+const motion = motionBase as any;
+
+const { 
   getAuth, 
   signInWithEmailAndPassword, 
   signOut, 
@@ -14,25 +19,22 @@ import {
   browserLocalPersistence, 
   browserSessionPersistence, 
   sendPasswordResetEmail 
-} from 'firebase/auth';
-import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
-import { GoogleGenAI } from "@google/genai";
-
-const motion = motionBase as any;
+} = FirebaseAuth;
 
 /**
- * CONFIGURAÇÃO FIREBASE (KIWIFY READY)
- * Inserindo chaves diretamente para resolver erro de inicialização e invalid-api-key
+ * CONFIGURAÇÃO FIREBASE
+ * Utilizando variáveis de ambiente process.env (definidas no vite.config.ts) para compatibilidade.
  */
 const firebaseConfig = {
-  apiKey: "AIzaSyBDMuE6qznpSh6XH9rnYRqGHCBnq6WwbDo",
-  authDomain: "essencia-do-cha.firebaseapp.com",
-  projectId: "essencia-do-cha",
-  storageBucket: "essencia-do-cha.appspot.com",
-  messagingSenderId: "123456789", // Ajustar na Vercel se necessário
-  appId: "1:123456789:web:abcdef"   // Ajustar na Vercel se necessário
+  apiKey: process.env.FIREBASE_API_KEY,
+  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.FIREBASE_PROJECT_ID,
+  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.FIREBASE_APP_ID
 };
 
+// Inicializa apenas se houver configuração, evita crash em dev se não configurado
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -639,21 +641,13 @@ const App: React.FC = () => {
         </div>
 
         <div className="w-full flex flex-col items-center gap-6 mt-8 pb-4">
-          <motion.button 
+          <button 
             onClick={handleInstallApp}
-            animate={{
-              boxShadow: ["0px 0px 0px rgba(255,255,255,0)", "0px 0px 20px rgba(255,255,255,0.6)", "0px 0px 0px rgba(255,255,255,0)"]
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-            className="w-full bg-white text-[#064E3B] py-4 rounded-2xl font-black uppercase tracking-widest text-xs active:scale-95 hover:brightness-110 transition-all flex items-center justify-center gap-3"
+            className="w-full bg-white text-[#064E3B] py-4 rounded-2xl font-black uppercase tracking-widest text-xs active:scale-95 hover:brightness-110 transition-all flex items-center justify-center gap-3 shadow-[0_8px_20px_rgba(6,78,59,0.4)]"
           >
             <Smartphone size={18} />
             INSTALAR APP NO CELULAR
-          </motion.button>
+          </button>
 
           <div className="flex flex-col items-center opacity-30">
             <p className="text-[8px] font-black uppercase tracking-[0.3em]">Powered by</p>
