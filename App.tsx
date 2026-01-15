@@ -6,7 +6,7 @@ import { motion as motionBase, AnimatePresence } from 'framer-motion';
 import { initializeApp } from 'firebase/app';
 import * as firebaseAuth from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const {
   getAuth,
