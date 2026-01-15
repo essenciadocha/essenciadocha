@@ -4,13 +4,8 @@ import { Recipe, UserProgress, CategoryType, Language, ColorMode } from './types
 import { RECIPES, getIcon, NUTRI_TIPS, INGREDIENTS_POOL } from './constants';
 import { motion as motionBase, AnimatePresence } from 'framer-motion';
 import { initializeApp } from 'firebase/app';
-import * as FirebaseAuth from 'firebase/auth';
-import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
-import { GoogleGenAI } from "@google/genai";
-
-const motion = motionBase as any;
-
-const { 
+// Fix: Import named exports directly from firebase/auth to avoid TypeScript errors with namespace import
+import { 
   getAuth, 
   signInWithEmailAndPassword, 
   signOut, 
@@ -19,11 +14,16 @@ const {
   browserLocalPersistence, 
   browserSessionPersistence, 
   sendPasswordResetEmail 
-} = FirebaseAuth;
+} from 'firebase/auth';
+import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { GoogleGenAI } from "@google/genai";
+
+const motion = motionBase as any;
 
 /**
  * CONFIGURAÇÃO FIREBASE
- * Utilizando variáveis de ambiente process.env (definidas no vite.config.ts) para compatibilidade.
+ * Utilizando process.env conforme configurado no vite.config.ts para injetar as variáveis
+ * corretamente na Vercel e localmente.
  */
 const firebaseConfig = {
   apiKey: process.env.FIREBASE_API_KEY,
@@ -34,10 +34,21 @@ const firebaseConfig = {
   appId: process.env.FIREBASE_APP_ID
 };
 
-// Inicializa apenas se houver configuração, evita crash em dev se não configurado
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+// Inicialização segura do Firebase
+let app: any;
+let auth: any;
+let db: any;
+
+try {
+  // Inicializa apenas se a API Key estiver presente
+  if (firebaseConfig.apiKey) {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+  }
+} catch (e) {
+  console.error("Erro na inicialização do Firebase:", e);
+}
 
 const THEME_COLORS = [
   { name: 'Musgo', color: '#064E3B' },
@@ -350,31 +361,29 @@ const App: React.FC = () => {
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
 
-  // Monitoramento de sessão única (Single Session)
+  // Monitoramento de sessão única e Auth State
   useEffect(() => {
-    if (!user) return;
+    if (!auth) {
+      setAuthLoading(false);
+      return;
+    }
 
-    // Monitora o documento do usuário no Firestore em tempo real
-    const unsubscribe = onSnapshot(doc(db, 'users', user.uid), (docSnapshot) => {
-      const data = docSnapshot.data();
-      if (data && data.sessionId) {
-        const currentSessionId = localStorage.getItem('essencia_session_id');
-        // Se houver um sessionId no banco e for diferente do local, desconecta
-        if (currentSessionId && data.sessionId !== currentSessionId) {
-           localStorage.setItem('essencia_logout_reason', 'concurrent_login');
-           signOut(auth);
-        }
-      }
-    });
-
-    return () => unsubscribe();
-  }, [user]);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser: any) => {
       setUser(currentUser);
       if (currentUser) {
         setUserName(currentUser.displayName || currentUser.email?.split('@')[0] || '');
+        
+        // Single Session Monitor
+        onSnapshot(doc(db, 'users', currentUser.uid), (docSnapshot: any) => {
+          const data = docSnapshot.data();
+          if (data && data.sessionId) {
+            const currentSessionId = localStorage.getItem('essencia_session_id');
+            if (currentSessionId && data.sessionId !== currentSessionId) {
+               localStorage.setItem('essencia_logout_reason', 'concurrent_login');
+               signOut(auth);
+            }
+          }
+        });
       }
       setAuthLoading(false);
     });
@@ -473,17 +482,17 @@ const App: React.FC = () => {
     }
   };
 
-  // Fix: GoogleGenAI initialization and usage follow world-class senior engineer guidelines
   const handleAISommelier = async () => {
     if (!searchQuery) return;
     setIsAiLoading(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      // Use process.env as configured in vite.config.ts
+      const apiKey = process.env.API_KEY;
+      const ai = new GoogleGenAI({ apiKey: apiKey });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: `Você é um sommelier de chás especialista. O usuário está sentindo ou buscando por: "${searchQuery}". Analise nossa lista de ervas: ${INGREDIENTS_POOL.slice(0, 50).join(', ')}. Identifique o ingrediente mais adequado para essa necessidade. Responda APENAS o nome do ingrediente (exatamente como na lista) para filtrar a busca, sem textos adicionais.`,
       });
-      // Fix: Use response.text getter directly as per GenAI SDK standards
       const text = response.text;
       if (text) {
         setSearchQuery(text.trim());
@@ -524,6 +533,10 @@ const App: React.FC = () => {
 
     const handleAuth = async (e: React.FormEvent) => {
       e.preventDefault();
+      if (!auth) {
+        setError("Firebase não conectado. Verifique a configuração.");
+        return;
+      }
       setError('');
       setInfo('');
       try {
@@ -531,10 +544,8 @@ const App: React.FC = () => {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        // Lógica de sessão única
         const sessionId = Date.now().toString();
         localStorage.setItem('essencia_session_id', sessionId);
-        // Salva o ID da sessão no Firestore para este usuário
         await setDoc(doc(db, 'users', user.uid), { sessionId }, { merge: true });
 
       } catch (err: any) {
@@ -547,6 +558,7 @@ const App: React.FC = () => {
     };
 
     const handleForgotPass = async () => {
+      if (!auth) return;
       if (!email) {
         setError('Insira seu e-mail para recuperar a senha.');
         return;
@@ -562,7 +574,7 @@ const App: React.FC = () => {
 
     return (
       <div className="fixed inset-0 z-[200] flex flex-col items-center justify-between py-12 px-8 text-white" style={{ backgroundColor: '#064E3B' }}>
-        <div className="w-full flex flex-col items-center">
+        <div className="w-full flex flex-col items-center flex-grow justify-center">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md space-y-8">
             <div className="text-center space-y-2">
               <div className="text-[60px] mb-4">🍵</div>
@@ -600,7 +612,7 @@ const App: React.FC = () => {
                 </div>
                 
                 <div className="flex justify-between items-center px-2 pt-1">
-                   {/* CHECKBOX CUSTOMIZADO */}
+                   {/* CHECKBOX PREMIUM - FUNDO BRANCO E CHECK VERDE */}
                    <label className="flex items-center gap-2 cursor-pointer group select-none" htmlFor="remember">
                       <div className="relative">
                         <input 
@@ -610,11 +622,11 @@ const App: React.FC = () => {
                           onChange={(e) => setRememberMe(e.target.checked)}
                           className="sr-only"
                         />
-                        <div className={`w-4 h-4 rounded-md bg-white border border-slate-100 flex items-center justify-center shadow-md transition-all active:scale-95 ${rememberMe ? 'opacity-100' : 'opacity-90'}`}>
+                        <div className="w-4 h-4 rounded-md bg-white border border-slate-100 flex items-center justify-center shadow-md transition-all">
                            <Check 
                              size={12} 
                              strokeWidth={4} 
-                             className={`text-[#064E3B] transition-all duration-200 ${rememberMe ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`} 
+                             className={`text-[#064E3B] transition-all duration-200 ${rememberMe ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`} 
                            />
                         </div>
                       </div>
@@ -643,7 +655,7 @@ const App: React.FC = () => {
         <div className="w-full flex flex-col items-center gap-6 mt-8 pb-4">
           <button 
             onClick={handleInstallApp}
-            className="w-full bg-white text-[#064E3B] py-4 rounded-2xl font-black uppercase tracking-widest text-xs active:scale-95 hover:brightness-110 transition-all flex items-center justify-center gap-3 shadow-[0_8px_20px_rgba(6,78,59,0.4)]"
+            className="w-full bg-white text-[#064E3B] py-4 rounded-2xl font-black uppercase tracking-widest text-xs active:scale-95 hover:brightness-110 transition-all flex items-center justify-center gap-3 shadow-[0px_0px_16px_rgba(6,78,59,0.5)]"
           >
             <Smartphone size={18} />
             INSTALAR APP NO CELULAR
