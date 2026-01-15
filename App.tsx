@@ -4,34 +4,34 @@ import { Recipe, UserProgress, CategoryType, Language, ColorMode } from './types
 import { RECIPES, getIcon, NUTRI_TIPS, INGREDIENTS_POOL } from './constants';
 import { motion as motionBase, AnimatePresence } from 'framer-motion';
 import { initializeApp } from 'firebase/app';
-// Fix: Import named exports directly from firebase/auth to avoid TypeScript errors with namespace import
-import { 
-  getAuth, 
-  signInWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged, 
-  setPersistence, 
-  browserLocalPersistence, 
-  browserSessionPersistence, 
-  sendPasswordResetEmail 
-} from 'firebase/auth';
+import * as firebaseAuth from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { GoogleGenAI } from "@google/genai";
+
+const {
+  getAuth,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
+  sendPasswordResetEmail
+} = firebaseAuth as any;
 
 const motion = motionBase as any;
 
 /**
- * CONFIGURAÇÃO FIREBASE
- * Utilizando process.env conforme configurado no vite.config.ts para injetar as variáveis
- * corretamente na Vercel e localmente.
+ * CONFIGURAÇÃO FIREBASE - PRODUÇÃO
+ * Utilizando import.meta.env para compatibilidade nativa com Vite e Vercel.
  */
 const firebaseConfig = {
-  apiKey: process.env.FIREBASE_API_KEY,
-  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.FIREBASE_PROJECT_ID,
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.FIREBASE_APP_ID
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 // Inicialização segura do Firebase
@@ -486,8 +486,7 @@ const App: React.FC = () => {
     if (!searchQuery) return;
     setIsAiLoading(true);
     try {
-      // Use process.env as configured in vite.config.ts
-      const apiKey = process.env.API_KEY;
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
       const ai = new GoogleGenAI({ apiKey: apiKey });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
