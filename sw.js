@@ -1,11 +1,9 @@
 const CACHE_NAME = "essencia-cha-v1";
-
-// Vamos focar no que realmente existe na pasta pública após o build
 const urlsToCache = [
   "/",
   "/index.html",
   "/manifest.json",
-  "/logo.png" // Garanta que o nome do seu ícone está certo aqui
+  "/icon-512.png" // Mudei de logo.png para o nome real do seu arquivo
 ];
 
 self.addEventListener("install", (event) => {
